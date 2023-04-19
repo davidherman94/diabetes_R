@@ -555,3 +555,4 @@ tab_logistic_not_adj_edad %>%
                 p.val = p.value...5)
 
 ##hola jose bb
+#hay que probar esto
