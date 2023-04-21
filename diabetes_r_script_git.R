@@ -15,7 +15,7 @@ library(meta)
 library(metafor) 
 library(AICcmodavg)
 library(readr)
-#library(Rcmdr)
+library(Rcmdr)
 
 #Cargar base de datos
 setwd("C:/Users/david/Desktop/Database_diabetes")
@@ -36,20 +36,6 @@ datos_ENHS[datos_ENHS == '99'] <- NA
 
 
                                       ### RECATEGORIZACION DE LOS GRUPOS ###
-
-## GRUPO EDAD
-datos_ENHS <- datos_ENHS %>% 
-  mutate(
-    EDADa = case_when(
-      EDADa >= 15 & EDADa <= 59 ~ "< 60 años",
-      EDADa >= 60               ~ "> 60 años") %>% as.factor())
-
-## Años residiendo
-datos_ENHS <- datos_ENHS %>% 
-  mutate(
-    E3 = case_when(
-      E3 >= 0 & E3 <= 9 ~ "< 10 años",
-      E3 >= 10           ~ "> 10 años") %>% as.factor())
 
 ##Severidad depresiva
 datos_ENHS <- within(datos_ENHS, {
@@ -80,12 +66,6 @@ datos_ENHS <- within(datos_ENHS, {
                  as.factor=TRUE, to.value="=", interval=":", separator=";")
 })
 
-## CONSUMO DE ALCOHOL
-datos_ENHS <- within(datos_ENHS, {
-  W127 <- Recode(W127, 
-                 '01 = "A diario o casi a diario"; 02 = "5-6 días por semana"; 03 = "3-4 días por semana"; 04 = "1-2 días por semana"; 05 = "2-3 días en un mes"; 06 = "Una vez al mes"; 07 = "Menos de una vez al mes"; 08 = "No en los últimos 12 meses, he dejado de tomar alcohol"; 09 = "Nunca o solamente unos sorbos para probarlo a lo largo de toda la vida"',
-                 as.factor=TRUE, to.value="=", interval=":", separator=";")
-})
 
 ## FUMAR: ¿Fuma actualmente?
 datos_ENHS <- within(datos_ENHS, {
@@ -205,7 +185,9 @@ datos_ENHS <- within(datos_ENHS, {
 ## Comunidad autonoma
 datos_ENHS <- within(datos_ENHS, {
   CCAA <- Recode(CCAA, 
-                 '01 = "Andalucía"; 02 = "Aragón"; 03 = "Asturias, Principado de"; 04 = "Balears, Illes"; 05 = "Canarias"; 06 = "Cantabria"; 07 = "Castilla y León"; 08 = "Castilla - La Mancha"; 09 = "Cataluña"; 10 = "Comunitat Valenciana"; 11 = "Extremadura"; 12 = "Galicia"; 13 = "Madrid, Comunidad de"; 14 = "Murcia, Región de"; 15 = "Navarra, Comunidad Foral de"; 16 = "País Vasco"; 17 = "Rioja, La"; 18 = "Ceuta"; 19 = "Melilla";',
+                 '01 = "Andalucía"; 02 = "Aragón"; 03 = "Asturias"; 04 = "Baleares"; 05 = "Canarias"; 06 = "Cantabria"; 07 = "Castilla y León"; 08 = "Castilla - La Mancha"; 09 = "Cataluña"; 
+                 10 = "Comunitat Valenciana"; 11 = "Extremadura"; 12 = "Galicia"; 13 = "Madrid"; 14 = "Murcia";
+                 15 = "Navarra"; 16 = "País Vasco"; 17 = "La Rioja"; 18 = "Ceuta"; 19 = "Melilla";',
                  as.factor=TRUE, to.value="=", interval=":", separator=";")
 })
 
@@ -221,10 +203,31 @@ datos_ENHS <- datos_ENHS %>%
 
 ## Pseudoterapia si o no
 datos_ENHS <- datos_ENHS %>%
-  mutate(Pseudo_si_no = case_when(
+  mutate(Pseudoterapia = case_when(
     N60a_1 == 1 | N60a_2 == 1 | N60a_3 == 1 | N60a_4 == 1 ~ "Pseudoterapia",
     TRUE ~ "Nunca" # Para cubrir cualquier otro caso no especificado
   ))
+
+## BEBIDA ALCOHOLICA
+datos_ENHS <- datos_ENHS %>%
+  mutate(W127 = case_when(
+    W127 == c(01,02,03,04,05,06,07,08) ~ "Si",
+    TRUE ~ "No" # Para cubrir cualquier otro caso no especificado
+  ))
+
+## GRUPO EDAD
+datos_ENHS <- datos_ENHS %>% 
+  mutate(
+    EDADa = case_when(
+      EDADa >= 15 & EDADa <= 59 ~ "< 60 años",
+      EDADa >= 60               ~ "> 60 años") %>% as.factor())
+
+## Años residiendo
+datos_ENHS <- datos_ENHS %>% 
+  mutate(
+    E3 = case_when(
+      E3 >= 0 & E3 <= 9 ~ "< 10 años",
+      E3 >= 10           ~ ">= 10 años") %>% as.factor())
 
 ## Recodificacion de las diferentes pseudoterapias
 
@@ -250,29 +253,22 @@ datos_ENHS <- within(datos_ENHS, {
 # ¿Necesitaría ayuda o más ayuda de la que dispone? (doble enunciado)
 
 datos_ENHS <- datos_ENHS %>%
-  mutate(Nec_ay = case_when(
-    L43 == 1 | L44 == 1 ~ "Nec_ayuda",
+  mutate(Ayuda_requerida = case_when(
+    L43 == 1 | L44 == 1 ~ "Si_ayuda",
     L43 == 2 | L44 == 2 ~ "No_ayuda",
     TRUE ~ "NA" # Para cubrir cualquier otro caso no especificado
   ))
 
-
-## Creacion de la variable Barthel
-### Despues de revisar las variables no disponemos de las necesarias ni para el calculo de Barthel ni Lawton y Brody
-
-
 #Selección de variables y renombrados}
+str(datos_ENHS)
 
-# datos_ENHS <- datos_ENHS %>%
-#   dplyr::filter(E4 <= 3, E4b <=5, ESTUDIOS <= 9,F10 <= 6,G24 <= 6, G25a_12 <= 2,G25b_12 <= 2,
-#                 G25c_12 <= 2, N58_3 <= 2,N60a_1 <= 2,N60a_2 <= 2,N60a_3 <= 2, N60a_4 <= 2, P87_1a <= 2, P87_19a <= 2, R106 <= 3, R107 <= 3, R108_1 <= 3, T112 <= 4,V121 <= 4, W127 <= 9,
-#                 X131 <=5, CLASE_PR <=6,IMC <=4,SEVERIDAD_DEPRESIVA <=5)
 datos_ENHS <- datos_ENHS %>%
-  dplyr::select(SEXOa,EDADa,E2_1a,E3,E4,E4b,ESTUDIOS,F10,G21,G23,G24,G25c_1,G25a_12,G25b_12,
-                G25c_12,N48,N58_3,N60a_1,N60a_2,N60a_3,N60a_4,O66,O78,O84_1,O84_2,O84_3,
-                O84_4,O84_5,O84_6,P87_1a, P87_19a,Q88,R106, R107, R108_1, T112,V121,W127,
-                X131, CLASE_PR,IMC,SEVERIDAD_DEPRESIVA)  %>% 
+  dplyr::select(CCAA, SEXOa,EDADa,E2_1a,E3,E4,E4b,ESTUDIOS,F10,G21,G25c_1,G25a_12,G25b_12,
+                G25c_12,N48,N58_3,O66,O78,Seguro,P87_1a,P87_19a,
+                Q88,R106, R107, R108_1, T112,V121,W127, Pseudoterapia,
+                X131, CLASE_PR,IMC,SEVERIDAD_DEPRESIVA,Ayuda_requerida)  %>% 
   dplyr::rename(
+    "Comunidad Autónoma" = "CCAA",
     "Sexo" = "SEXOa",
     "Edad" = "EDADa",
     "Nacionalidad" = "E2_1a",
@@ -284,18 +280,17 @@ datos_ENHS <- datos_ENHS %>%
     "Salud_percibida" = "G21",
     "alguna vez diabetes" = "G25a_12",
     "ultimo 12 meses diabetes" = "G25b_12",
-    "diagnostico medico diabetes" = "G25c_12",
+    "Diagnostico medico diabetes" = "G25c_12",
     "Tiempo ultima visita médica" = "N48",
     "Visita_enfermero/matrona" = "N58_3",
-    "Visita_homeopata" = "N60a_1",
-    "Visita_acupuntor" = "N60a_2",
-    "Visita_naturista" = "N60a_3",
-    "Visita_otro med. alternativa" = "N60a_4",
-    "Ingreso_hospitalario" = "O78",
+    #"Visita_homeopata" = "N60a_1",
+    #"Visita_acupuntor" = "N60a_2",
+    #"Visita_naturista" = "N60a_3",
+    #"Visita_otro med. alternativa" = "N60a_4",
     "Serv_emergencias" = "O78",
-    "Seguro publico" = "O84_1",
-    "Seguro mutual" = "O84_2",
-    "Seguro privado" = "O84_4",
+   # "Seguro publico" = "O84_1",
+    #"Seguro mutual" = "O84_2",
+    #"Seguro privado" = "O84_4",
     "Medicamentos catarro" = "P87_1a",
     "Medicamentos diabetes" = "P87_19a",
     "Vacuna_gripe" = "Q88",
@@ -307,20 +302,20 @@ datos_ENHS <- datos_ENHS %>%
     "Bebida_alcohólica" = "W127",
     "Interés de otras personas" = "X131",
     "Clase social" = "CLASE_PR", 
-    "IMC_factor" = "IMC",
+    "IMC" = "IMC",
     "Severidad depresiva" = "SEVERIDAD_DEPRESIVA")
 
-glimpse(datos_ENHS)###similar a str pero muestra aún mas información
 
 
-#pasar a factor
+#pasar a factor y visualizar str
 datos_ENHS[sapply(datos_ENHS, is.integer)] <- lapply(datos_ENHS[sapply(datos_ENHS, is.integer)], 
                                                      as.factor)
+glimpse(datos_ENHS)
 
 # ##renombrar factores
 levels(datos_ENHS$Vacuna_gripe) <- c('si',"no")
-datos_ENSE$Visita_médica <- with(datos_ENSE, factor(Visita_médica, levels=c('ultimo_mes',"ultimo_ano","mas_1_ano")))
-datos_ENSE$Vacuna_gripe <- with(datos_ENSE, factor(Vacuna_gripe, levels=c("si","no")))
+#datos_ENSE$Visita_médica <- with(datos_ENSE, factor(Visita_médica, levels=c('ultimo_mes',"ultimo_ano","mas_1_ano")))
+#datos_ENSE$Vacuna_gripe <- with(datos_ENSE, factor(Vacuna_gripe, levels=c("si","no")))
 
 #Descriptivos por status
 datos_ENHS %>%
@@ -336,21 +331,18 @@ datos_ENHS %>%
 # export tbl_summary as CSV
 write_csv(as.data.frame(tbl_summary), "tbl_summary.csv")
 
-
-
-
-
 ##################################################################################
 ##################################################################################################
 ##################################################################################
-#Modelo múltiple
+#Modelo regresion logistica multiple
 ###############
 ##################################################################################
 ###################################################################################
-ENE_md_multivariante <- glm(
+datos_ENHS_filter <- dplyr :: filter(datos_ENHS, datos_ENHS$`Medicamentos diabetes` == "Sí")
+diab_md_multivariante <- glm(
   Vacuna_gripe ~ Visita_médica + Sexo + Grupo_edad + País_nacimiento + IMC_factor + Bebida_alcohólica +
-    act_fisica + Estado_laboral + serv_emergencias + Salud_percibida + Tabaco, 
-  data = datos_ENSE, na.action = na.exclude, family = binomial(link = 'logit'))
+  act_fisica + Estado_laboral + serv_emergencias + Salud_percibida + Tabaco, 
+  data = datos_ENHS_filter, na.action = na.exclude, family = binomial(link = 'logit'))
 
 ENSE_md_multivariante %>% summary
 
